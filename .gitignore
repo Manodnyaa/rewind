@@ -1,0 +1,17 @@
+# Environment variables / secrets
+.env
+
+# Python virtual environment
+backend/venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Project data
+backend/data/
+
+# OS / editor files
+.vscode/
+.DS_Store
