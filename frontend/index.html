@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rewind</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    background: #101114;
+    color: #e8e9ec;
+    font: 14px/1.6 system-ui, sans-serif;
+  }
+
+  #chat {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100vh;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 17px 24px;
+    border-bottom: 1px solid #25272d;
+    color: #f5f5f6;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -.02em;
+  }
+
+  header .title span {
+    margin-left: 8px;
+    color: #777b86;
+    font-weight: 400;
+  }
+
+  #new-chat {
+    padding: 5px 10px;
+    border: 1px solid #2b2d34;
+    border-radius: 7px;
+    background: transparent;
+    color: #9699a3;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  #new-chat:hover { border-color: #626d91; color: #e4e8f5; }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px max(24px, calc((100% - 680px) / 2));
+  }
+
+  .intro {
+    max-width: 560px;
+    margin: 13vh auto 0;
+  }
+
+  .intro h1 {
+    margin: 0 0 8px;
+    font-size: 23px;
+    font-weight: 550;
+    letter-spacing: -.05em;
+  }
+
+  .intro p {
+    margin: 0;
+    color: #8f929b;
+    font-size: 13px;
+  }
+
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 22px;
+  }
+
+  .suggestion {
+    padding: 8px 11px;
+    border: 1px solid #2b2d34;
+    border-radius: 7px;
+    background: transparent;
+    color: #b8bbc4;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .suggestion:hover {
+    border-color: #626d91;
+    color: #e4e8f5;
+  }
+
+  .msg {
+    max-width: 680px;
+    margin: 0 auto 22px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .user {
+    width: fit-content;
+    max-width: 85%;
+    margin-left: auto;
+    padding: 9px 13px;
+    border-radius: 10px 10px 3px 10px;
+    background: #20232b;
+    color: #e4e7ef;
+  }
+
+  .bot {
+    color: #dfe0e4;
+    line-height: 1.75;
+  }
+
+  .bot strong { color: #f2f3f6; font-weight: 600; }
+
+  .thinking { color: #777b86; }
+  .thinking::after {
+    content: "";
+    display: inline-block;
+    width: 1.2em;
+    text-align: left;
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+  @keyframes dots {
+    0%   { content: ""; }
+    25%  { content: "."; }
+    50%  { content: ".."; }
+    75%  { content: "..."; }
+  }
+
+  .chip {
+    display: inline-block;
+    padding: 0 6px;
+    margin: 0 2px;
+    border: 1px solid #3b4560;
+    border-radius: 5px;
+    background: #202738;
+    color: #b9c8ff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .chip:hover { background: #2b3650; }
+
+  .sources, .model, .error-box { white-space: normal; }
+
+  .sources {
+    display: grid;
+    gap: 6px;
+    margin-top: 15px;
+  }
+
+  .source {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #292b32;
+    border-radius: 7px;
+    background: transparent;
+    color: #aeb1ba;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+  }
+
+  .source:hover {
+    border-color: #515d7c;
+    background: #171a20;
+  }
+
+  .source.active {
+    border-color: #6b7bb5;
+    background: #171a20;
+  }
+
+  .source-num {
+    flex: none;
+    color: #7f8aae;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .source-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .source-time {
+    flex: none;
+    color: #aebeff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .model {
+    margin-top: 10px;
+    color: #696d77;
+    font-size: 10px;
+  }
+
+  .error { color: #ff9292; }
+
+  form {
+    display: flex;
+    gap: 9px;
+    width: min(680px, calc(100% - 40px));
+    margin: 0 auto 22px;
+    padding: 7px;
+    border: 1px solid #30323a;
+    border-radius: 10px;
+    background: #17191f;
+  }
+
+  form:focus-within { border-color: #4a5273; }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 9px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+  }
+
+  input::placeholder { color: #777b85; }
+
+  button.send {
+    padding: 0 15px;
+    border: 0;
+    border-radius: 7px;
+    background: #dce3ff;
+    color: #171923;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  button.send:disabled {
+    opacity: .5;
+    cursor: default;
+  }
+
+  #side {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    border-left: 1px solid #25272d;
+    background: #13151a;
+  }
+
+  .label {
+    color: #9699a3;
+    font-size: 11px;
+  }
+
+  #player {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #050506;
+  }
+
+  .lecture-title {
+    color: #e2e3e7;
+    font-size: 12px;
+  }
+
+  .lecture-title a {
+    margin-left: 6px;
+    color: #9fb2ff;
+    text-decoration: none;
+  }
+
+  .lecture-title a:hover { text-decoration: underline; }
+
+  .hint {
+    margin-top: auto;
+    color: #737782;
+    font-size: 11px;
+  }
+
+  @media (max-width: 800px) {
+    body {
+      height: 100dvh;
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    #chat { height: 100%; min-height: 0; }
+    header { padding: 14px 17px; }
+    #messages { padding: 23px 17px; }
+    .intro { margin-top: 8vh; }
+    form { width: calc(100% - 28px); margin-bottom: 12px; }
+
+    /* The video panel only appears once the user jumps to a moment */
+    #side { display: none; padding: 10px 14px; border-top: 1px solid #25272d; border-left: 0; }
+    body.has-player #side { display: flex; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+
+<body>
+  <main id="chat">
+    <header>
+      <div class="title">Rewind <span>Ask this lecture</span></div>
+      <button id="new-chat" type="button">New chat</button>
+    </header>
+
+    <div id="messages" role="log" aria-live="polite">
+      <div class="intro" id="intro">
+        <h1>What part should we unpack?</h1>
+        <p>Ask about this lecture. Answers link to the moment they come from.</p>
+        <div class="suggestions">
+          <button class="suggestion" data-question="What if I go blank during a presentation?">What if I go blank?</button>
+          <button class="suggestion" data-question="How do I handle a hard question?">Handle a hard question</button>
+          <button class="suggestion" data-question="How should I structure a short presentation?">Structure a short talk</button>
+        </div>
+      </div>
+    </div>
+
+    <form id="form">
+      <input id="q" placeholder="Ask about this lecture…" autocomplete="off" required>
+      <button class="send" id="send">Ask</button>
+    </form>
+  </main>
+
+  <aside id="side">
+    <div class="label">CURRENT LECTURE</div>
+    <div id="player"></div>
+    <div class="lecture-title" id="lecture-title">Lecture video</div>
+    <div class="hint">Click a citation or source to jump to that moment.</div>
+  </aside>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+  /* ---------- YouTube player ---------- */
+  let player = null;
+  let playerReady = false;
+  let pendingSeek = null;
+  let currentVideo = null;
+
+  const lectureTitle = document.getElementById("lecture-title");
+
+  function initPlayer() {
+    if (player) return;
+    player = new YT.Player("player", {
+      width: "100%",
+      height: "100%",
+      playerVars: { rel: 0, modestbranding: 1 },
+      events: {
+        onReady: () => {
+          playerReady = true;
+          if (pendingSeek) {
+            const p = pendingSeek;
+            pendingSeek = null;
+            seekTo(p);
+          }
+        },
+        onError: () => {
+          // Some videos block embedding; the "Open on YouTube" link still works.
+          lectureTitle.insertAdjacentHTML("beforeend",
+            ` <span class="error">· can't play here</span>`);
+        }
+      }
+    });
+  }
+
+  // The API script may call this before or after our code runs; handle both.
+  window.onYouTubeIframeAPIReady = initPlayer;
+  if (window.YT && window.YT.Player) initPlayer();
+
+  function seekTo(citation) {
+    if (!citation || !citation.video_id) return;
+    const seconds = Math.floor(Number(citation.start_seconds) || 0);
+
+    document.body.classList.add("has-player");
+    lectureTitle.innerHTML =
+      `${esc(citation.title || "Lecture video")} · ${fmt(seconds)}` +
+      `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(citation.video_id)}&t=${seconds}s" ` +
+      `target="_blank" rel="noopener">Open on YouTube ↗</a>`;
+
+    if (!playerReady) { pendingSeek = citation; return; }
+
+    if (currentVideo === citation.video_id) {
+      player.seekTo(seconds, true);
+      player.playVideo();
+    } else {
+      player.loadVideoById({ videoId: citation.video_id, startSeconds: seconds });
+      currentVideo = citation.video_id;
+    }
+  }
+
+  /* ---------- helpers ---------- */
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[char]));
+
+  const fmt = value => {
+    const seconds = Math.floor(Number(value) || 0);
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  };
+
+  // Matches [1], [1, 2], 【2】 and similar
+  const CITE_RE = /[\[【]\s*(\d+(?:\s*[,，]\s*\d+)*)\s*[\]】]/g;
+
+  function citedIndexes(text, citations) {
+    const found = new Set();
+    for (const m of text.matchAll(CITE_RE)) {
+      m[1].split(/[,，]/).forEach(n => {
+        const i = Number(n) - 1;
+        if (citations[i]) found.add(i);
+      });
+    }
+    return [...found].sort((a, b) => a - b);
+  }
+
+  function renderAnswer(text, citations) {
+    return esc(text)
+      // light markdown cleanup in case the model adds some anyway
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/^[ \t]*[*-]\s+/gm, "• ")
+      .replace(/\*/g, "")
+      // turn citation markers into clickable chips
+      .replace(CITE_RE, (match, nums) => {
+        const chips = nums.split(/[,，]/).map(n => {
+          const i = Number(n) - 1;
+          return citations[i]
+            ? `<button type="button" class="chip" data-cite="${i}">${i + 1}</button>`
+            : "";
+        }).join("");
+        return chips || match;
+      });
+  }
+
+  /* ---------- chat ---------- */
+  const messages = document.getElementById("messages");
+  const form = document.getElementById("form");
+  const input = document.getElementById("q");
+  const send = document.getElementById("send");
+  const introHTML = document.getElementById("intro").outerHTML;
+
+  const history = [];
+  let busy = false;
+
+  function draw(bot, state) {
+    const nearBottom =
+      messages.scrollHeight - messages.scrollTop - messages.clientHeight < 140;
+
+    bot.citations = state.citations;
+
+    if (state.error) {
+      bot.innerHTML = `<div class="error-box error">${esc(state.error)}</div>`;
+      return;
+    }
+
+    if (!state.answer) {
+      bot.innerHTML = `<span class="thinking">Thinking</span>`;
+      return;
+    }
+
+    let html = renderAnswer(state.answer, state.citations);
+
+    if (state.citations.length) {
+      // Show only the sources the answer actually cites; fall back to all of them.
+      const cited = citedIndexes(state.answer, state.citations);
+      const shown = cited.length ? cited : state.citations.map((_, i) => i);
+      html += `<div class="sources">` + shown.map(i => {
+        const c = state.citations[i];
+        return `<button type="button" class="source" data-source="${i}">` +
+          `<span class="source-num">${i + 1}</span>` +
+          `<span class="source-title">${esc(c.title || "Lecture moment")}</span>` +
+          `<span class="source-time">${fmt(c.start_seconds)}</span>` +
+          `</button>`;
+      }).join("") + `</div>`;
+    }
+
+    if (state.model) html += `<div class="model">Answered by ${esc(state.model)}</div>`;
+    bot.innerHTML = html;
+
+    if (nearBottom) messages.scrollTop = messages.scrollHeight;
+  }
+
+  async function ask(question) {
+    question = question.trim();
+    if (!question || busy) return;
+
+    busy = true;
+    send.disabled = true;
+    document.getElementById("intro")?.remove();
+    input.value = "";
+
+    const user = document.createElement("div");
+    user.className = "msg user";
+    user.textContent = question;
+    messages.appendChild(user);
+
+    const bot = document.createElement("div");
+    bot.className = "msg bot";
+    messages.appendChild(bot);
+
+    const state = { answer: "", citations: [], model: "", error: "" };
+    draw(bot, state);
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, history: history.slice(-6) })
+      });
+
+      if (!response.ok || !response.body) throw new Error("bad response");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value: chunk, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(chunk, { stream: true }).replace(/\r\n/g, "\n");
+        let boundary;
+
+        while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+          const block = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+
+          let eventName = "message";
+          let data = "";
+          for (const line of block.split("\n")) {
+            if (line.startsWith("event: ")) eventName = line.slice(7).trim();
+            else if (line.startsWith("data: ")) data += line.slice(6);
+          }
+          if (!data) continue;
+
+          let payload;
+          try { payload = JSON.parse(data); } catch { continue; }
+
+          if (eventName === "citations") state.citations = payload;
+          else if (eventName === "model") state.model = payload;
+          else if (eventName === "token") state.answer += payload;
+          else if (eventName === "error") state.error = payload;
+
+          draw(bot, state);
+        }
+      }
+
+      if (!state.answer && !state.error) {
+        state.error = "No answer received. Please try again.";
+        draw(bot, state);
+      }
+
+      // Only remember answers that were grounded in sources
+      if (state.answer && state.citations.length) {
+        history.push(
+          { role: "user", content: question },
+          { role: "assistant", content: state.answer }
+        );
+      }
+    } catch {
+      state.error = "Could not reach the server. Is it running?";
+      draw(bot, state);
+    } finally {
+      busy = false;
+      send.disabled = false;
+      input.focus();
+    }
+  }
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    ask(input.value);
+  });
+
+  // One delegated handler for suggestions, citation chips and source rows
+  messages.addEventListener("click", event => {
+    const suggestion = event.target.closest(".suggestion");
+    if (suggestion) { ask(suggestion.dataset.question); return; }
+
+    const button = event.target.closest("[data-cite], [data-source]");
+    if (!button) return;
+
+    const bot = button.closest(".bot");
+    const index = Number(button.dataset.cite ?? button.dataset.source);
+    const citation = bot?.citations?.[index];
+    if (!citation) return;
+
+    bot.querySelectorAll(".source").forEach(el =>
+      el.classList.toggle("active", Number(el.dataset.source) === index));
+    seekTo(citation);
+  });
+
+  document.getElementById("new-chat").addEventListener("click", () => {
+    if (busy) return;
+    history.length = 0;
+    messages.innerHTML = introHTML;
+    input.focus();
+  });
+</script>
+</body>
+</html>

@@ -9,8 +9,9 @@ venv/
 __pycache__/
 *.py[cod]
 
-# Project data
-backend/data/
+# Generated data: ignore the vector index, but KEEP transcripts.json (the deploy rebuilds from it)
+backend/data/*
+!backend/data/transcripts.json
 
 # OS / editor files
 .vscode/
