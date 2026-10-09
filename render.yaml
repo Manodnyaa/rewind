@@ -5,7 +5,7 @@ services:
     plan: free
     healthCheckPath: /api/health
     envVars:
-      - key: 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
+      - key: GROQ_API_KEY 
         sync: false          # you enter the value in the Render dashboard
       - key: ANONYMIZED_TELEMETRY
         value: "False"
