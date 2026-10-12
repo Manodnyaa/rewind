@@ -27,6 +27,7 @@ def chunk_transcript(entries: list[dict], video_id: str, title: str, youtube_url
                 "title":title,
                 "text":" ".join(texts_in_window).strip(),
                 "start_seconds": window_start,
+                "end_seconds": window_end,
                 "youtube_url": youtube_url,
             })
         window_start += step

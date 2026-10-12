@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 
 os.environ["ANONYMIZED_TELEMETRY"] = "False"   # silence telemetry noise
@@ -18,6 +19,21 @@ _bm25 = None
 _chunks = []
 
 
+def tokenize(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9']+", text.lower())   # words only: strips . , ? ! etc.
+
+
+def normalize_chunk(chunk: dict, index: int) -> dict:
+    text = chunk.get("text") or chunk.get("evidence") or chunk.get("question") or ""
+    return {
+        **chunk,
+        "text": text,
+        "title": chunk.get("title") or "Generated eval item",
+        "video_id": chunk.get("video_id") or f"eval-{index}",
+        "start_seconds": chunk.get("start_seconds", 0),
+    }
+
+
 def get_embedder():
     global _embedder
     if _embedder is None:
@@ -29,7 +45,7 @@ def build_index():
     global _collection, _bm25, _chunks
 
     with open(DATA_PATH, encoding="utf-8") as f:
-        _chunks = json.load(f)
+        _chunks = [normalize_chunk(c, i) for i, c in enumerate(json.load(f))]
 
     texts = [c["text"] for c in _chunks]
 
@@ -46,14 +62,13 @@ def build_index():
         embeddings=get_embedder().encode(texts).tolist(),
         documents=texts,
     )
-    #keyword search!
-    _bm25 = BM25Okapi([t.lower().split() for t in texts])
 
-#finds lecture chunks whose meaning is similar to the users question.
-def vector_search(query, k=5): # top 5 chunks
-    q = get_embedder().encode([query]).tolist() # converts the question into a numerical vector.
-    #search the chromadb
-    res = _collection.query(query_embeddings=q, n_results=k) #k closet vectors to the questions vectors
+    _bm25 = BM25Okapi([tokenize(t) for t in texts])
+
+
+def vector_search(query, k=5):
+    q = get_embedder().encode([query]).tolist()
+    res = _collection.query(query_embeddings=q, n_results=k)
     out = []
     for id_, dist in zip(res["ids"][0], res["distances"][0]):
         chunk = dict(_chunks[int(id_)])
@@ -61,8 +76,8 @@ def vector_search(query, k=5): # top 5 chunks
         out.append(chunk)
     return out
 
-#word matching
+
 def keyword_search(query, k=5):
-    scores = _bm25.get_scores(query.lower().split())
+    scores = _bm25.get_scores(tokenize(query))
     top = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
     return [{**_chunks[i], "score": float(scores[i])} for i in top]
