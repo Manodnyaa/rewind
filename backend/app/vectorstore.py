@@ -46,13 +46,14 @@ def build_index():
         embeddings=get_embedder().encode(texts).tolist(),
         documents=texts,
     )
-
+    #keyword search!
     _bm25 = BM25Okapi([t.lower().split() for t in texts])
 
-
-def vector_search(query, k=5):
-    q = get_embedder().encode([query]).tolist()
-    res = _collection.query(query_embeddings=q, n_results=k)
+#finds lecture chunks whose meaning is similar to the users question.
+def vector_search(query, k=5): # top 5 chunks
+    q = get_embedder().encode([query]).tolist() # converts the question into a numerical vector.
+    #search the chromadb
+    res = _collection.query(query_embeddings=q, n_results=k) #k closet vectors to the questions vectors
     out = []
     for id_, dist in zip(res["ids"][0], res["distances"][0]):
         chunk = dict(_chunks[int(id_)])
@@ -60,7 +61,7 @@ def vector_search(query, k=5):
         out.append(chunk)
     return out
 
-
+#word matching
 def keyword_search(query, k=5):
     scores = _bm25.get_scores(query.lower().split())
     top = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
